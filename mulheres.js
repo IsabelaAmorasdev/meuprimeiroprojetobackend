@@ -1,33 +1,94 @@
-const express = require('express')
-const router = express.Router ()
+const express = require('express') //aqui estou iniciando o express
+const router = express.Router () //aqui estou configurando a primeira parte da rota
+const cors = require('cors') // aqui estou trazendo o pacote cors que permite consumir essa api no front-end
+const conectaBancoDeDados = require('./bancoDeDados') //aqui estou ligando ao arquivo bancoDeDados
+conectaBancoDeDados() //estou chamando a função que conecta o banco de dados
 
-const app = express()
-const porta = 3333
+const Mulher = require('./mulherModel')
 
-const mulheres = [
-    {
-        nome: 'Simara Conceição',
-        imagem: 'https://media.licdn.com/dms/image/v2/D4D03AQE8tKpHlgqZfA/profile-displayphoto-shrink_800_800/B4DZdBMOAAHAAg-/0/1749145412836?e=1763596800&v=beta&t=a0tM0J0b70ucbr10guiqPoRCX9p6Its1k9MaQMaqhTE',
-        minibio: 'Desenvolvedora e Instrutora'
-    },
-    {
-       nome: 'Iana Chan',
-       imagem: 'https://media.licdn.com/dms/image/v2/D4D03AQH94QQ7TrKasQ/profile-displayphoto-shrink_200_200/profile-displayphoto-shrink_200_200/0/1686007268307?e=1762387200&v=beta&t=uGSikAyBcF2iz91eAHph_3Vhwhf2nSWPOKuUsZ1jpjM',
-       minibio: 'Fundadora da Pragramaria'
-    },
-    {
-        nome: 'Nina da Hora',
-        imagem: 'https://media.licdn.com/dms/image/v2/D4E22AQECPTzTVNHPNw/feedshare-shrink_800/feedshare-shrink_800/0/1728047666568?e=1762387200&v=beta&t=eKI47QMmYZefveDf7G6YAKxTG_p0fewIUmdnkZXAr3I',
-        minibio: 'Hacker antiracista'
+const app = express() //aqui estou iniciando o app
+app.use(express.json())
+app.use(cors())
+
+const porta = 3333 //aqui estou criando a porta
+
+//GET
+async function mostraMulheres(request, response) {
+    try {
+        const mulheresvindasDoBancoDeDados = await Mulher.find()
+
+        response.json(mulheresvindasDoBancoDeDados)
+    }catch (erro) {
+        console.log(erro)
     }
-]
-
-function mostraMulheres(request, response) {
-response.json(mulheres)
 }
+
+//POST
+async function criaMulher(request,response) {
+const novaMulher = new Mulher({
+    nome: request.body.nome,
+    imagem: request.body.imagem,
+    minibio: request.body.minibio,
+    citacao: request.body.citacao
+})
+
+try {
+    const mulherCriada = await novaMulher.save()
+    response.status(201).json(mulherCriada)
+} catch (erro) {
+    console.log(erro)
+}
+}
+
+//PATCH
+async function corrigeMulher(request, response) {
+try {
+    const mulherEncontrada = await Mulher.findById (request.params.id)
+
+    if (request.body.nome) {
+    mulherEncontrada.nome = request.body.nome
+ }
+
+if (request.body.minibio) {
+    mulherEncontrada.minibio = request.body.minibio
+}
+
+if (request.body.imagem) {
+    mulherEncontrada.imagem = request.body.imagem
+}
+
+if (request.body.citacao) {
+    mulherEncontrada = request.body.citacao
+}
+
+const mulherAtualizadaNoBancoDeDados = await mulherEncontrada.save()
+
+response.json(mulherAtualizadaNoBancoDeDados)
+} catch (erro) {
+    console.log (erro)
+}
+}
+
+// DELETE
+async function deletaMulher(request, response) {
+    try {
+        await Mulher.findByIdAndDelete(request.params.id)
+        response.json({messagem: 'Mulher deletada com sucesso!'})
+    } catch (erro) {
+        console.log(erro)
+    }  
+}
+
+
+app.use(router.get('/mulheres', mostraMulheres)) //configurei rota GET /mulheres
+app.use(router.post('/mulheres', criaMulher)) //configurei rota POST /mulheres
+app.use(router.patch('/mulheres/:id', corrigeMulher)) //configurei a rota PACTH /mulheres/:id
+app.use(router.delete('/mulheres/:id', deletaMulher)) //configurei rota DELETE /mulheres
+
+
+//PORTA
 function mostraPorta() {
     console.log('Servidor criado e rodando na porta ', porta)
 }
 
-app.use(router.get('/mulheres', mostraMulheres))
-app.listen(porta, mostraPorta)
+app.listen(porta, mostraPorta) //servidor ouvindo a porta
